@@ -168,17 +168,17 @@ export default function Landing() {
       <section className="py-12 bg-white border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-8">Trusted across industries</p>
-          <div className="flex flex-wrap justify-center gap-8 md:gap-16">
-            <div className="flex items-center gap-2 text-slate-600 font-medium">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-8">
+            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-slate-50 border border-slate-200 text-slate-700 font-bold shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all">
               <Building2 className="w-6 h-6 text-blue-500" /> Offices
             </div>
-            <div className="flex items-center gap-2 text-slate-600 font-medium">
+            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-slate-50 border border-slate-200 text-slate-700 font-bold shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all">
               <GraduationCap className="w-6 h-6 text-emerald-500" /> Schools
             </div>
-            <div className="flex items-center gap-2 text-slate-600 font-medium">
+            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-slate-50 border border-slate-200 text-slate-700 font-bold shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all">
               <Hospital className="w-6 h-6 text-red-500" /> Hospitals
             </div>
-            <div className="flex items-center gap-2 text-slate-600 font-medium">
+            <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-slate-50 border border-slate-200 text-slate-700 font-bold shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all">
               <Factory className="w-6 h-6 text-amber-500" /> Factories
             </div>
           </div>
