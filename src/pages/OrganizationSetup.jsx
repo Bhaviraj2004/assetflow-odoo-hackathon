@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
-import { ref, onValue, update, push, set } from "firebase/database";
+import { Plus, Trash2 } from "lucide-react";
+import { ref, onValue, update, push, set, remove } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
@@ -90,6 +90,17 @@ export default function OrganizationSetup() {
     }
   };
 
+  const handleDelete = async (collection, id) => {
+    if (window.confirm(`Are you sure you want to delete this ${collection.slice(0, -1)}?`)) {
+      try {
+        await remove(ref(rtdb, `${collection}/${id}`));
+      } catch (err) {
+        console.error("Error deleting:", err);
+        alert("Failed to delete. Please try again.");
+      }
+    }
+  };
+
   if (!loading && userData?.role !== "Admin") {
     return (
       <div className="flex items-center justify-center h-full">
@@ -106,52 +117,64 @@ export default function OrganizationSetup() {
       <PageHeader 
         title="Organization Setup" 
         description="Manage departments, categories and employee roles (Admin only)."
-        action={
-          activeTab !== "Employee Directory" && (
-            <Button onClick={() => setIsAddModalOpen(true)} icon={Plus}>
-              Add New
-            </Button>
-          )
-        }
       />
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-        {/* Tabs */}
-        <div className="border-b border-slate-200 flex overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === tab
-                  ? "border-b-2 border-blue-600 text-blue-600"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        {/* Tabs and Action */}
+        <div className="border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between px-2 bg-slate-50/50">
+          <div className="flex overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-b-2 border-transparent"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          
+          {activeTab !== "Employee Directory" && (
+            <div className="p-2 sm:p-0 sm:pr-4">
+              <Button onClick={() => setIsAddModalOpen(true)} icon={Plus} className="w-full sm:w-auto">
+                Add New {activeTab === "Asset Category" ? "Category" : "Department"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Content */}
         <div className="p-6 flex-1 flex flex-col overflow-hidden">
           {activeTab === "Departments" && (
             <div className="flex flex-col h-full">
-              <Table headers={["Department", "Head", "Parent Department", "Status"]}>
+              <Table headers={["Department", "Head", "Asset Category", "Status", "Actions"]}>
                 {departments.map((dept) => (
                   <Tr key={dept.id}>
                     <Td className="font-medium text-slate-900">{dept.name}</Td>
                     <Td>{dept.headName || "None"}</Td>
-                    <Td>{dept.parentDepartment || "None"}</Td>
+                    <Td>{dept.assetCategory || "None"}</Td>
                     <Td>
                       <Badge variant={dept.status === 'Active' ? 'success' : 'default'}>
                         {dept.status}
                       </Badge>
                     </Td>
+                    <Td>
+                      <button 
+                        onClick={() => handleDelete('departments', dept.id)}
+                        className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 transition-colors"
+                        title="Delete Department"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Td>
                   </Tr>
                 ))}
                 {departments.length === 0 && (
-                  <Tr><Td colSpan={4} className="text-center text-slate-500">No departments found</Td></Tr>
+                  <Tr><Td colSpan={5} className="text-center text-slate-500">No departments found</Td></Tr>
                 )}
               </Table>
             </div>
@@ -159,14 +182,23 @@ export default function OrganizationSetup() {
 
           {activeTab === "Asset Category" && (
             <div className="flex flex-col h-full">
-              <Table headers={["Category Name"]}>
+              <Table headers={["Category Name", "Actions"]}>
                 {categories.map((cat) => (
                   <Tr key={cat.id}>
                     <Td className="font-medium text-slate-900">{cat.name}</Td>
+                    <Td>
+                      <button 
+                        onClick={() => handleDelete('categories', cat.id)}
+                        className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 transition-colors"
+                        title="Delete Category"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Td>
                   </Tr>
                 ))}
                 {categories.length === 0 && (
-                  <Tr><Td className="text-center text-slate-500">No categories found</Td></Tr>
+                  <Tr><Td colSpan={2} className="text-center text-slate-500">No categories found</Td></Tr>
                 )}
               </Table>
             </div>
@@ -240,14 +272,14 @@ export default function OrganizationSetup() {
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Parent Department (Optional)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Asset Category (Optional)</label>
                 <select
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
-                  onChange={(e) => setNewEntityData({...newEntityData, parentDepartment: e.target.value})}
+                  onChange={(e) => setNewEntityData({...newEntityData, assetCategory: e.target.value})}
                 >
                   <option value="">None</option>
-                  {departments.map(dept => (
-                    <option key={dept.id} value={dept.name}>{dept.name}</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
               </div>

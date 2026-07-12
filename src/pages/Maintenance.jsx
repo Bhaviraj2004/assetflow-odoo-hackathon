@@ -12,6 +12,16 @@ import { Badge } from "../components/ui/Badge";
 export default function Maintenance() {
   const { userData } = useAuth();
   const columns = ["Pending", "Approved", "Technician Assigned", "In Progress", "Resolved"];
+  
+  const getNextStatusLabel = (status) => {
+    switch(status) {
+      case "Pending": return "Approve";
+      case "Approved": return "Assign Tech";
+      case "Technician Assigned": return "Start Work";
+      case "In Progress": return "Resolve";
+      default: return "Advance";
+    }
+  };
   const [requests, setRequests] = useState([]);
   const [assets, setAssets] = useState([]);
   
@@ -144,7 +154,7 @@ export default function Maintenance() {
                         onClick={() => advanceStatus(card)}
                         className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-md font-semibold hover:bg-blue-600 hover:text-white transition-colors border border-transparent hover:border-blue-700 shadow-sm"
                       >
-                        Advance
+                        {getNextStatusLabel(column)}
                       </button>
                     )}
                   </div>

@@ -4,10 +4,14 @@ import { ref, onValue, get, push, set, update } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
+import { Table, Tr, Td } from "../components/ui/Table";
+import { Badge } from "../components/ui/Badge";
+
 export default function AssetAllocation() {
   const { userData } = useAuth();
   const [assets, setAssets] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [allAllocations, setAllAllocations] = useState([]);
   
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [selectedAssetData, setSelectedAssetData] = useState(null);
@@ -34,7 +38,18 @@ export default function AssetAllocation() {
     };
     fetchEmployees();
 
-    return () => unsubAssets();
+    // Fetch allocations
+    const unsubAllocs = onValue(ref(rtdb, 'allocations'), (snapshot) => {
+      const data = snapshot.val() || {};
+      const allocsList = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+      allocsList.sort((a, b) => new Date(b.allocatedAt) - new Date(a.allocatedAt));
+      setAllAllocations(allocsList);
+    });
+
+    return () => {
+      unsubAssets();
+      unsubAllocs();
+    };
   }, []);
 
   useEffect(() => {
@@ -54,7 +69,7 @@ export default function AssetAllocation() {
           if (data.assetId === selectedAssetId) {
             const alloc = { id, ...data };
             history.push(alloc);
-            if (alloc.status === "Allocated") {
+            if (alloc.status === "Allocated" || alloc.status === "Return Pending") {
               active = alloc;
             }
           }
@@ -125,6 +140,53 @@ export default function AssetAllocation() {
     } catch (err) {
       console.error("Error allocating asset:", err);
       alert("Error processing request");
+    }
+  };
+
+  const handleInitiateReturn = async (allocId, assetId) => {
+    if (window.confirm("Are you sure you want to return this asset?")) {
+      try {
+        await update(ref(rtdb, `allocations/${allocId}`), {
+          status: "Return Pending"
+        });
+        await update(ref(rtdb, `assets/${assetId}`), {
+          status: "Maintenance" // Or Return Pending, but Maintenance is a valid global status
+        });
+        alert("Return initiated. Pending manager verification.");
+      } catch (err) {
+        console.error("Error initiating return:", err);
+        alert("Failed to initiate return.");
+      }
+    }
+  };
+
+  const handleVerifyReturn = async (alloc, assetId) => {
+    if (window.confirm("Verify and accept this return?")) {
+      try {
+        // Mark allocation as Returned
+        await update(ref(rtdb, `allocations/${alloc.id}`), {
+          status: "Returned",
+          returnedAt: new Date().toISOString()
+        });
+        
+        // Update asset status to Available
+        await update(ref(rtdb, `assets/${assetId}`), {
+          status: "Available"
+        });
+
+        // Log activity
+        const logRef = push(ref(rtdb, "activityLogs"));
+        await set(logRef, {
+          action: "Asset Returned",
+          entity: `${alloc.assetTag} from ${alloc.assignedToName}`,
+          timestamp: new Date().toISOString()
+        });
+
+        alert("Return verified successfully. Asset is now Available.");
+      } catch (err) {
+        console.error("Error verifying return:", err);
+        alert("Failed to verify return.");
+      }
     }
   };
 
@@ -260,6 +322,57 @@ export default function AssetAllocation() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+          <h2 className="text-lg font-bold text-slate-900">All Allocations & Transfers</h2>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <Table headers={["Asset", "Assigned To", "Status", "Date", "Expected Return", "Actions"]}>
+            {allAllocations.map((alloc) => (
+              <Tr key={alloc.id}>
+                <Td className="font-medium text-slate-900">{alloc.assetTag} - {alloc.assetName}</Td>
+                <Td>{alloc.assignedToName}</Td>
+                <Td>
+                  <Badge variant={alloc.status === "Allocated" ? "primary" : alloc.status === "Return Pending" ? "warning" : alloc.status === "Returned" ? "success" : "info"}>
+                    {alloc.status}
+                  </Badge>
+                </Td>
+                <Td>{new Date(alloc.allocatedAt).toLocaleDateString()}</Td>
+                <Td>{alloc.expectedReturnDate ? new Date(alloc.expectedReturnDate).toLocaleDateString() : "N/A"}</Td>
+                <Td>
+                  {/* Employee returning their own asset */}
+                  {alloc.status === "Allocated" && alloc.assignedToId === userData?.id && (
+                    <button 
+                      onClick={() => handleInitiateReturn(alloc.id, alloc.assetId)}
+                      className="text-xs font-medium px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-md transition-colors"
+                    >
+                      Return
+                    </button>
+                  )}
+                  {/* Manager verifying return */}
+                  {alloc.status === "Return Pending" && (userData?.role === "Admin" || userData?.role === "Asset Manager") && (
+                    <button 
+                      onClick={() => handleVerifyReturn(alloc, alloc.assetId)}
+                      className="text-xs font-medium px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-md transition-colors"
+                    >
+                      Verify
+                    </button>
+                  )}
+                  {alloc.status === "Returned" && (
+                    <span className="text-xs text-slate-400">Completed</span>
+                  )}
+                </Td>
+              </Tr>
+            ))}
+            {allAllocations.length === 0 && (
+              <Tr>
+                <Td colSpan={6} className="text-center text-slate-500">No allocations found</Td>
+              </Tr>
+            )}
+          </Table>
         </div>
       </div>
     </div>

@@ -25,6 +25,11 @@
       ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Asset Manager')"
     },
     
+    "sharedResources": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin')"
+    },
+    
     "allocations": {
       ".read": "auth != null",
       ".write": "auth != null"
