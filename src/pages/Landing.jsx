@@ -97,15 +97,6 @@ export default function Landing() {
                   </>
                 )}
               </div>
-              
-              <div className="flex items-center gap-4 text-sm text-slate-500 font-medium">
-                <div className="flex -space-x-2">
-                  <img className="w-8 h-8 rounded-full border-2 border-white bg-slate-200" src="https://i.pravatar.cc/100?img=1" alt="User" />
-                  <img className="w-8 h-8 rounded-full border-2 border-white bg-slate-200" src="https://i.pravatar.cc/100?img=2" alt="User" />
-                  <img className="w-8 h-8 rounded-full border-2 border-white bg-slate-200" src="https://i.pravatar.cc/100?img=3" alt="User" />
-                </div>
-                <p>Trusted by 10,000+ teams worldwide</p>
-              </div>
             </div>
             
             {/* Right Content - Dashboard Mockup */}
