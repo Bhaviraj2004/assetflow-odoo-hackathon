@@ -15,16 +15,27 @@ export function AuthProvider({ children }) {
       setUser(firebaseUser);
       
       if (firebaseUser) {
-        // Fetch custom user data (role, department, etc) from Firestore
+        // Optimistic update for hardcoded admin
+        if (firebaseUser.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2') {
+          setUserData({ role: 'Admin' });
+        }
+        
+        // Unblock UI immediately so refresh doesn't hang
+        setLoading(false);
+        
         try {
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
           
           if (userDoc.exists()) {
-            setUserData(userDoc.data());
+            const data = userDoc.data();
+            if (firebaseUser.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2') data.role = 'Admin';
+            setUserData(data);
           } else {
-            console.warn("No user data found in Firestore for this auth user.");
-            setUserData(null);
+            if (firebaseUser.uid !== 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2') {
+              console.warn("No user data found in Firestore for this auth user.");
+              setUserData(null);
+            }
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -32,9 +43,8 @@ export function AuthProvider({ children }) {
         }
       } else {
         setUserData(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return unsubscribe;
@@ -48,7 +58,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

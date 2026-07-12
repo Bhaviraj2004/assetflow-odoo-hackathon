@@ -1,4 +1,6 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { auth } from "../lib/firebase";
 import {
   LayoutDashboard,
   Settings,
@@ -8,11 +10,22 @@ import {
   Wrench,
   ClipboardCheck,
   BarChart3,
-  Bell
+  Bell,
+  LogOut
 } from "lucide-react";
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -58,6 +71,17 @@ export default function Layout() {
             );
           })}
         </nav>
+        
+        {/* Logout Button */}
+        <div className="p-4 border-t border-slate-200">
+          <button
+            onClick={handleLogout}
+            className="flex items-center w-full px-3 py-2.5 text-sm font-medium text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors group"
+          >
+            <LogOut className="flex-shrink-0 -ml-1 mr-3 h-5 w-5 text-slate-400 group-hover:text-red-500" />
+            <span className="truncate">Log out</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
