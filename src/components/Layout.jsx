@@ -12,13 +12,18 @@ import {
   ClipboardCheck,
   BarChart3,
   Bell,
-  LogOut
+  LogOut,
+  User,
+  ChevronDown
 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { userData } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   const handleLogout = async () => {
     try {
@@ -28,6 +33,16 @@ export default function Layout() {
       console.error("Error signing out: ", error);
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -95,7 +110,58 @@ export default function Layout() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        {/* Top Header */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-end px-6 flex-shrink-0 z-10">
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="flex items-center gap-2 hover:bg-slate-50 p-2 rounded-lg transition-colors focus:outline-none"
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden border border-slate-200">
+                {userData?.profilePicture ? (
+                  <img src={userData.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-5 h-5 text-blue-600" />
+                )}
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="text-sm font-medium text-slate-700">{userData?.name || "User"}</p>
+              </div>
+              <ChevronDown className="w-4 h-4 text-slate-500" />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                <Link
+                  to="/profile"
+                  onClick={() => setDropdownOpen(false)}
+                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  View Profile
+                </Link>
+                <Link
+                  to="/edit-profile"
+                  onClick={() => setDropdownOpen(false)}
+                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Edit Profile
+                </Link>
+                <div className="border-t border-slate-100 my-1"></div>
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    handleLogout();
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50">
           <Outlet />
         </div>
       </main>

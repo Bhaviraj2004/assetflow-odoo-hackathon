@@ -3,6 +3,8 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
 import Landing from './pages/Landing'
+import Profile from './pages/Profile'
+import EditProfile from './pages/EditProfile'
 import Layout from './components/Layout'
 import { useAuth } from './context/AuthContext'
 
@@ -42,6 +44,8 @@ function App() {
       {/* Protected Routes Wrapper */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/edit-profile" element={<EditProfile />} />
         <Route path="/setup" element={<OrganizationSetup />} />
         <Route path="/assets" element={<AssetDirectory />} />
         <Route path="/allocation" element={<AssetAllocation />} />

@@ -3,10 +3,11 @@
     ".read": "auth != null",
     
     "users": {
+      ".read": "auth != null",
       "$userId": {
         ".read": "auth != null",
         ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || auth.uid === $userId)",
-        ".validate": "newData.child('role').val() !== 'Admin' || (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin')"
+        ".validate": "newData.child('role').val() === data.child('role').val() || !data.exists() || (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin')"
       }
     },
     
