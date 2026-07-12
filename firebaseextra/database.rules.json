@@ -1,0 +1,57 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    
+    "users": {
+      "$userId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || auth.uid === $userId)"
+      }
+    },
+    
+    "departments": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin')"
+    },
+    
+    "categories": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin')"
+    },
+    
+    "assets": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Asset Manager')"
+    },
+    
+    "allocations": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    
+    "bookings": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    
+    "maintenance": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Asset Manager')"
+    },
+    
+    "audits": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Asset Manager')"
+    },
+    
+    "activityLogs": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    
+    "notifications": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
