@@ -1,16 +1,56 @@
-# React + Vite
+# AssetFlow
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+AssetFlow is a modern, intuitive asset management platform designed to simplify workflows and bring complete visibility to your organization's resources. Built for the Odoo Hackathon.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Role-Based Access Control: Specialized dashboards and workflows for Admin, Asset Manager, Department Head, and Employee roles.
+- Asset Management: Complete lifecycle management from registration to disposal.
+- Resource Booking: Allow employees to request and book assets.
+- Maintenance Tracking: Schedule and track maintenance tasks for all hardware.
+- Audits: Built-in tools for performing and logging asset audits.
+- Analytics and Reporting: Visual charts for total assets, allocations, maintenance, and status.
+- Activity Logs: Track all system actions for security and compliance.
 
-## React Compiler
+## Technology Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Frontend: React, Vite, Tailwind CSS
+- Routing: React Router
+- Charts: Recharts
+- Icons: Lucide React
+- Backend / Database: Firebase Realtime Database
+- Authentication: Firebase Authentication
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm
+- Firebase Account
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+   npm install
+
+3. Set up Firebase:
+   - Create a Firebase project and enable Authentication (Email/Password) and Realtime Database.
+   - Configure your Firebase credentials in src/lib/firebase.js.
+
+4. Run the development server:
+   npm run dev
+
+5. Open your browser and navigate to http://localhost:5173.
+
+## Roles Overview
+
+- Admin: Full system access, user management, global reports.
+- Asset Manager: Manage inventory, approve bookings, schedule maintenance.
+- Department Head: View department assets, approve departmental requests.
+- Employee: View assigned assets, request new resources, report issues.
+
+## License
+
+This project was created for the Odoo Hackathon.
