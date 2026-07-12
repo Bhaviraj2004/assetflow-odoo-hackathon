@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search } from "lucide-react";
-import { collection, query, onSnapshot, addDoc, getDocs } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, onValue, push, set } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
 import { PageHeader } from "../components/ui/PageHeader";
@@ -26,18 +26,21 @@ export default function AssetDirectory() {
 
   useEffect(() => {
     // Fetch categories for the dropdown
-    const fetchCats = async () => {
-      const snap = await getDocs(collection(db, "categories"));
-      setCategories(snap.docs.map(doc => doc.data().name));
-    };
-    fetchCats();
-
-    // Listen to assets collection
-    const unsubAssets = onSnapshot(query(collection(db, "assets")), (snapshot) => {
-      setAssets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsubCats = onValue(ref(rtdb, 'categories'), (snapshot) => {
+      const data = snapshot.val() || {};
+      setCategories(Object.values(data).map(cat => cat.name));
     });
 
-    return () => unsubAssets();
+    // Listen to assets collection
+    const unsubAssets = onValue(ref(rtdb, 'assets'), (snapshot) => {
+      const data = snapshot.val() || {};
+      setAssets(Object.entries(data).map(([id, val]) => ({ id, ...val })));
+    });
+
+    return () => {
+      unsubCats();
+      unsubAssets();
+    };
   }, []);
 
   const handleRegister = async (e) => {
@@ -51,10 +54,11 @@ export default function AssetDirectory() {
         tag,
         status: "Available",
         registeredBy: userData?.name || "Unknown",
-        registeredAt: new Date()
+        registeredAt: new Date().toISOString()
       };
       
-      await addDoc(collection(db, "assets"), assetData);
+      const newRef = push(ref(rtdb, 'assets'));
+      await set(newRef, assetData);
       setIsAddModalOpen(false);
       setNewAsset({ name: "", category: "", location: "", serialNumber: "", condition: "New" });
     } catch (err) {

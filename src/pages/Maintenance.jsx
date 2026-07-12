@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
-import { collection, onSnapshot, addDoc, updateDoc, doc, getDocs } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, onValue, get, push, set, update } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
 import { PageHeader } from "../components/ui/PageHeader";
@@ -21,14 +21,16 @@ export default function Maintenance() {
 
   useEffect(() => {
     // Fetch maintenance requests
-    const unsub = onSnapshot(collection(db, "maintenance"), (snapshot) => {
-      setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsub = onValue(ref(rtdb, 'maintenance'), (snapshot) => {
+      const data = snapshot.val() || {};
+      setRequests(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     });
     
     // Fetch assets for dropdown
     const fetchAssets = async () => {
-      const snap = await getDocs(collection(db, "assets"));
-      setAssets(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const snap = await get(ref(rtdb, 'assets'));
+      const data = snap.val() || {};
+      setAssets(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     };
     fetchAssets();
     
@@ -42,20 +44,22 @@ export default function Maintenance() {
     const asset = assets.find(a => a.id === selectedAssetId);
     
     try {
-      await addDoc(collection(db, "maintenance"), {
+      const newReqRef = push(ref(rtdb, "maintenance"));
+      await set(newReqRef, {
         assetId: selectedAssetId,
         assetTag: asset.tag,
         assetName: asset.name,
         issue,
         status: "Pending",
         raisedBy: userData?.name || "Unknown",
-        createdAt: new Date()
+        createdAt: new Date().toISOString()
       });
       
-      await addDoc(collection(db, "activityLogs"), {
+      const newLogRef = push(ref(rtdb, "activityLogs"));
+      await set(newLogRef, {
         action: "Maintenance Requested",
         entity: asset.tag,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       });
 
       setIsAddModalOpen(false);
@@ -74,25 +78,26 @@ export default function Maintenance() {
     const nextStatus = columns[currentIndex + 1];
     
     try {
-      await updateDoc(doc(db, "maintenance", req.id), {
+      await update(ref(rtdb, `maintenance/${req.id}`), {
         status: nextStatus
       });
       
       // Update asset status based on maintenance rules
       if (nextStatus === "Approved") {
-        await updateDoc(doc(db, "assets", req.assetId), {
+        await update(ref(rtdb, `assets/${req.assetId}`), {
           status: "Under Maintenance"
         });
       } else if (nextStatus === "Resolved") {
-        await updateDoc(doc(db, "assets", req.assetId), {
+        await update(ref(rtdb, `assets/${req.assetId}`), {
           status: "Available"
         });
       }
       
-      await addDoc(collection(db, "activityLogs"), {
+      const logRef = push(ref(rtdb, "activityLogs"));
+      await set(logRef, {
         action: `Maintenance ${nextStatus}`,
         entity: req.assetTag,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       });
       
     } catch (err) {

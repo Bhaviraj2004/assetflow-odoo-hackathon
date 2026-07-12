@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, ArrowRight } from "lucide-react";
-import { collection, query, onSnapshot, getDocs, addDoc, updateDoc, doc, where, orderBy } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, onValue, get, push, set, update } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
 export default function AssetAllocation() {
@@ -21,14 +21,16 @@ export default function AssetAllocation() {
 
   useEffect(() => {
     // Fetch assets
-    const unsubAssets = onSnapshot(collection(db, "assets"), (snapshot) => {
-      setAssets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsubAssets = onValue(ref(rtdb, 'assets'), (snapshot) => {
+      const data = snapshot.val() || {};
+      setAssets(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     });
     
     // Fetch employees
     const fetchEmployees = async () => {
-      const snap = await getDocs(query(collection(db, "users")));
-      setEmployees(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const snap = await get(ref(rtdb, 'users'));
+      const data = snap.val() || {};
+      setEmployees(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     };
     fetchEmployees();
 
@@ -42,21 +44,24 @@ export default function AssetAllocation() {
       
       // Fetch active allocation if any
       const fetchAllocations = async () => {
-        const allocQuery = query(collection(db, "allocations"), where("assetId", "==", selectedAssetId));
-        const allocSnap = await getDocs(allocQuery);
+        const snap = await get(ref(rtdb, 'allocations'));
+        const allAllocs = snap.val() || {};
         
         let active = null;
         const history = [];
-        allocSnap.forEach(doc => {
-          const data = { id: doc.id, ...doc.data() };
-          history.push(data);
-          if (data.status === "Allocated") {
-            active = data;
+        
+        Object.entries(allAllocs).forEach(([id, data]) => {
+          if (data.assetId === selectedAssetId) {
+            const alloc = { id, ...data };
+            history.push(alloc);
+            if (alloc.status === "Allocated") {
+              active = alloc;
+            }
           }
         });
         
-        // Sort history by date descending manually since we can't do complex index here easily
-        history.sort((a, b) => b.allocatedAt?.toMillis() - a.allocatedAt?.toMillis());
+        // Sort history by date descending manually
+        history.sort((a, b) => new Date(b.allocatedAt) - new Date(a.allocatedAt));
         
         setActiveAllocation(active);
         setAllocationHistory(history);
@@ -86,26 +91,28 @@ export default function AssetAllocation() {
         assignedToId: toEmployee,
         assignedToName: toEmpData.name,
         reason,
-        expectedReturnDate: expectedReturnDate ? new Date(expectedReturnDate) : null,
+        expectedReturnDate: expectedReturnDate ? new Date(expectedReturnDate).toISOString() : null,
         status: isTransfer ? "Transfer Requested" : "Allocated",
         requestedBy: userData?.name || "Unknown",
-        allocatedAt: new Date()
+        allocatedAt: new Date().toISOString()
       };
 
-      await addDoc(collection(db, "allocations"), newAllocData);
+      const newAllocRef = push(ref(rtdb, "allocations"));
+      await set(newAllocRef, newAllocData);
       
       // Update asset status if direct allocation
       if (!isTransfer) {
-        await updateDoc(doc(db, "assets", selectedAssetId), {
+        await update(ref(rtdb, `assets/${selectedAssetId}`), {
           status: "Allocated"
         });
       }
 
       // Log activity
-      await addDoc(collection(db, "activityLogs"), {
+      const logRef = push(ref(rtdb, "activityLogs"));
+      await set(logRef, {
         action: isTransfer ? "Transfer Requested" : "Allocated",
         entity: `${selectedAssetData.tag} to ${toEmpData.name}`,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       });
 
       // Reset form
@@ -243,7 +250,7 @@ export default function AssetAllocation() {
                     </div>
                     <div className="pb-4">
                       <p className="text-sm text-slate-900 font-medium">
-                        {historyItem.allocatedAt ? new Date(historyItem.allocatedAt.toDate()).toLocaleDateString() : 'Unknown Date'} 
+                        {historyItem.allocatedAt ? new Date(historyItem.allocatedAt).toLocaleDateString() : 'Unknown Date'} 
                         - {historyItem.status} to {historyItem.assignedToName}
                       </p>
                       {historyItem.reason && <p className="text-xs text-slate-500 mt-1">Reason: {historyItem.reason}</p>}

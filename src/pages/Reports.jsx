@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Download } from 'lucide-react';
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, onValue } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Button } from "../components/ui/Button";
 
@@ -11,13 +11,15 @@ export default function Reports() {
   const [maintenance, setMaintenance] = useState([]);
   
   useEffect(() => {
-    const unsubAssets = onSnapshot(collection(db, "assets"), (snapshot) => {
-      setAssets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsubAssets = onValue(ref(rtdb, 'assets'), (snapshot) => {
+      const data = snapshot.val() || {};
+      setAssets(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     });
     
     // In case there is a maintenance collection, we fetch it. If not, this gracefully handles an empty collection
-    const unsubMaint = onSnapshot(collection(db, "maintenance"), (snapshot) => {
-      setMaintenance(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsubMaint = onValue(ref(rtdb, 'maintenance'), (snapshot) => {
+      const data = snapshot.val() || {};
+      setMaintenance(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     });
 
     return () => {

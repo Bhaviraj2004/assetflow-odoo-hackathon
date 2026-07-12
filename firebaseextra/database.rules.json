@@ -5,7 +5,8 @@
     "users": {
       "$userId": {
         ".read": "auth != null",
-        ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || auth.uid === $userId)"
+        ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || auth.uid === $userId)",
+        ".validate": "newData.child('role').val() !== 'Admin' || (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin')"
       }
     },
     
@@ -36,7 +37,7 @@
     
     "maintenance": {
       ".read": "auth != null",
-      ".write": "auth != null && (auth.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2' || root.child('users').child(auth.uid).child('role').val() === 'Admin' || root.child('users').child(auth.uid).child('role').val() === 'Asset Manager')"
+      ".write": "auth != null"
     },
     
     "audits": {

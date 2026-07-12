@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../lib/firebase";
+import { useAuth } from "../context/AuthContext";
 import {
   LayoutDashboard,
   Settings,
@@ -17,6 +18,7 @@ import {
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { userData } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -29,7 +31,7 @@ export default function Layout() {
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { name: "Organization Setup", path: "/setup", icon: Settings },
+    { name: "Organization Setup", path: "/setup", icon: Settings, adminOnly: true },
     { name: "Assets", path: "/assets", icon: PackageSearch },
     { name: "Allocation & Transfer", path: "/allocation", icon: ArrowRightLeft },
     { name: "Resource Booking", path: "/booking", icon: CalendarDays },
@@ -38,6 +40,13 @@ export default function Layout() {
     { name: "Reports", path: "/reports", icon: BarChart3 },
     { name: "Notifications", path: "/notifications", icon: Bell },
   ];
+
+  const visibleNavItems = navItems.filter(item => {
+    if (item.adminOnly && userData?.role !== "Admin") {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -48,7 +57,7 @@ export default function Layout() {
         </div>
         
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = location.pathname.startsWith(item.path);
             const Icon = item.icon;
             return (

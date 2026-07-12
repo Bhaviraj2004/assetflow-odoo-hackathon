@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, AlertTriangle } from "lucide-react";
-import { collection, onSnapshot, addDoc, getDocs, updateDoc, doc } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, onValue, get, push, set, update } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
 import { PageHeader } from "../components/ui/PageHeader";
@@ -23,14 +23,16 @@ export default function Audit() {
 
   useEffect(() => {
     // Fetch audits
-    const unsubAudits = onSnapshot(collection(db, "audits"), (snapshot) => {
-      setAudits(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsubAudits = onValue(ref(rtdb, 'audits'), (snapshot) => {
+      const data = snapshot.val() || {};
+      setAudits(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     });
     
     // Fetch assets to audit
     const fetchAssets = async () => {
-      const snap = await getDocs(collection(db, "assets"));
-      setAssets(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const snap = await get(ref(rtdb, 'assets'));
+      const data = snap.val() || {};
+      setAssets(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     };
     fetchAssets();
     
@@ -42,12 +44,13 @@ export default function Audit() {
     if (!title || !scope) return;
     
     try {
-      await addDoc(collection(db, "audits"), {
+      const newAuditRef = push(ref(rtdb, "audits"));
+      await set(newAuditRef, {
         title,
         scope,
         status: "In Progress",
         createdBy: userData?.name || "Unknown",
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
         items: assets.map(a => ({
           assetId: a.id,
           assetTag: a.tag,
@@ -57,10 +60,11 @@ export default function Audit() {
         }))
       });
       
-      await addDoc(collection(db, "activityLogs"), {
+      const newLogRef = push(ref(rtdb, "activityLogs"));
+      await set(newLogRef, {
         action: "Audit Cycle Started",
         entity: title,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       });
 
       setIsAddModalOpen(false);
@@ -79,7 +83,7 @@ export default function Audit() {
     newItems[itemIndex].status = newStatus;
     
     try {
-      await updateDoc(doc(db, "audits", auditId), {
+      await update(ref(rtdb, `audits/${auditId}`), {
         items: newItems
       });
       
@@ -94,24 +98,25 @@ export default function Audit() {
 
   const closeAudit = async (audit) => {
     try {
-      await updateDoc(doc(db, "audits", audit.id), {
+      await update(ref(rtdb, `audits/${audit.id}`), {
         status: "Completed",
-        completedAt: new Date()
+        completedAt: new Date().toISOString()
       });
       
       // Update missing assets in the main assets collection
       for (const item of audit.items) {
         if (item.status === "Missing") {
-          await updateDoc(doc(db, "assets", item.assetId), {
+          await update(ref(rtdb, `assets/${item.assetId}`), {
             status: "Lost"
           });
         }
       }
       
-      await addDoc(collection(db, "activityLogs"), {
+      const logRef = push(ref(rtdb, "activityLogs"));
+      await set(logRef, {
         action: "Audit Cycle Closed",
         entity: audit.title,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       });
 
       alert("Audit cycle closed successfully.");

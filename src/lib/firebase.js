@@ -12,7 +12,7 @@ const firebaseConfig = {
   messagingSenderId: "731956527466",
   appId: "1:731956527466:web:c9df7a226fc3cb3aa46513",
   measurementId: "G-YS9BH3MDZ9",
-  databaseURL: "https://assetflow-cea64-default-rtdb.firebaseio.com"
+  databaseURL: "https://assetflow-cea64-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
 
 // Initialize Firebase

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Clock, AlertCircle } from "lucide-react";
-import { collection, query, onSnapshot, getDocs, addDoc, where, orderBy } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, onValue, push, set } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
 export default function ResourceBooking() {
@@ -19,8 +19,9 @@ export default function ResourceBooking() {
 
   useEffect(() => {
     // Fetch all assets (treating them as bookable resources for now)
-    const unsub = onSnapshot(collection(db, "assets"), (snapshot) => {
-      setResources(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsub = onValue(ref(rtdb, 'assets'), (snapshot) => {
+      const data = snapshot.val() || {};
+      setResources(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     });
     return () => unsub();
   }, []);
@@ -28,13 +29,12 @@ export default function ResourceBooking() {
   useEffect(() => {
     if (selectedResourceId && bookingDate) {
       // Fetch bookings for this resource on this day
-      // For simplicity, we just fetch all for the resource and filter client-side
-      const q = query(collection(db, "bookings"), where("resourceId", "==", selectedResourceId));
-      const unsub = onSnapshot(q, (snapshot) => {
-        const bks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Filter for selected date
-        const dateBks = bks.filter(b => b.date === bookingDate);
-        setBookings(dateBks);
+      const unsub = onValue(ref(rtdb, 'bookings'), (snapshot) => {
+        const data = snapshot.val() || {};
+        const bks = Object.entries(data)
+          .map(([id, val]) => ({ id, ...val }))
+          .filter(b => b.resourceId === selectedResourceId && b.date === bookingDate);
+        setBookings(bks);
       });
       return () => unsub();
     } else {
@@ -79,7 +79,8 @@ export default function ResourceBooking() {
     const resource = resources.find(r => r.id === selectedResourceId);
     
     try {
-      await addDoc(collection(db, "bookings"), {
+      const newBookingRef = push(ref(rtdb, "bookings"));
+      await set(newBookingRef, {
         resourceId: selectedResourceId,
         resourceName: resource.name,
         date: bookingDate,
@@ -87,13 +88,14 @@ export default function ResourceBooking() {
         endTime,
         bookedBy: userData?.name || "Unknown",
         status: "Upcoming",
-        createdAt: new Date()
+        createdAt: new Date().toISOString()
       });
       
-      await addDoc(collection(db, "activityLogs"), {
+      const newLogRef = push(ref(rtdb, "activityLogs"));
+      await set(newLogRef, {
         action: "Booking Confirmed",
         entity: `${resource.name} on ${bookingDate} (${startTime}-${endTime})`,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       });
 
       alert("Resource booked successfully!");

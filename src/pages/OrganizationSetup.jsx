@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
-import { collection, query, onSnapshot, addDoc } from "firebase/firestore";
-import { ref, onValue, update } from "firebase/database";
-import { db, rtdb } from "../lib/firebase";
+import { ref, onValue, update, push, set } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
 import { PageHeader } from "../components/ui/PageHeader";
@@ -14,7 +13,7 @@ import { Table, Tr, Td } from "../components/ui/Table";
 export default function OrganizationSetup() {
   const { userData, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("Departments");
-  const tabs = ["Departments", "Categories", "Employees"];
+  const tabs = ["Departments", "Asset Category", "Employee Directory"];
 
   const [departments, setDepartments] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -24,14 +23,19 @@ export default function OrganizationSetup() {
   const [newEntityData, setNewEntityData] = useState({});
 
   useEffect(() => {
-    const unsubDepts = onSnapshot(query(collection(db, "departments")), (snapshot) => {
-      setDepartments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const deptsRef = ref(rtdb, 'departments');
+    const unsubDepts = onValue(deptsRef, (snapshot) => {
+      const data = snapshot.val();
+      setDepartments(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
     }, (error) => {
       console.error("Error fetching departments:", error);
       alert("Error reading departments from database. Check Firebase rules.");
     });
-    const unsubCats = onSnapshot(query(collection(db, "categories")), (snapshot) => {
-      setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+    const catsRef = ref(rtdb, 'categories');
+    const unsubCats = onValue(catsRef, (snapshot) => {
+      const data = snapshot.val();
+      setCategories(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
     }, (error) => console.error("Error fetching categories:", error));
 
     const usersRef = ref(rtdb, 'users');
@@ -56,9 +60,11 @@ export default function OrganizationSetup() {
     e.preventDefault();
     try {
       if (activeTab === "Departments") {
-        await addDoc(collection(db, "departments"), { ...newEntityData, status: "Active" });
-      } else if (activeTab === "Categories") {
-        await addDoc(collection(db, "categories"), { ...newEntityData });
+        const newRef = push(ref(rtdb, 'departments'));
+        await set(newRef, { ...newEntityData, status: "Active" });
+      } else if (activeTab === "Asset Category") {
+        const newRef = push(ref(rtdb, 'categories'));
+        await set(newRef, { ...newEntityData });
       }
       setIsAddModalOpen(false);
       setNewEntityData({});
@@ -73,6 +79,14 @@ export default function OrganizationSetup() {
       await update(ref(rtdb, `users/${userId}`), { role: newRole });
     } catch (err) {
       console.error("Error updating role:", err);
+    }
+  };
+
+  const handleDepartmentChange = async (userId, newDept) => {
+    try {
+      await update(ref(rtdb, `users/${userId}`), { department: newDept });
+    } catch (err) {
+      console.error("Error updating department:", err);
     }
   };
 
@@ -93,7 +107,7 @@ export default function OrganizationSetup() {
         title="Organization Setup" 
         description="Manage departments, categories and employee roles (Admin only)."
         action={
-          activeTab !== "Employees" && (
+          activeTab !== "Employee Directory" && (
             <Button onClick={() => setIsAddModalOpen(true)} icon={Plus}>
               Add New
             </Button>
@@ -123,11 +137,12 @@ export default function OrganizationSetup() {
         <div className="p-6 flex-1 flex flex-col overflow-hidden">
           {activeTab === "Departments" && (
             <div className="flex flex-col h-full">
-              <Table headers={["Department", "Head", "Status"]}>
+              <Table headers={["Department", "Head", "Parent Department", "Status"]}>
                 {departments.map((dept) => (
                   <Tr key={dept.id}>
                     <Td className="font-medium text-slate-900">{dept.name}</Td>
                     <Td>{dept.headName || "None"}</Td>
+                    <Td>{dept.parentDepartment || "None"}</Td>
                     <Td>
                       <Badge variant={dept.status === 'Active' ? 'success' : 'default'}>
                         {dept.status}
@@ -136,13 +151,13 @@ export default function OrganizationSetup() {
                   </Tr>
                 ))}
                 {departments.length === 0 && (
-                  <Tr><Td colSpan={3} className="text-center text-slate-500">No departments found</Td></Tr>
+                  <Tr><Td colSpan={4} className="text-center text-slate-500">No departments found</Td></Tr>
                 )}
               </Table>
             </div>
           )}
 
-          {activeTab === "Categories" && (
+          {activeTab === "Asset Category" && (
             <div className="flex flex-col h-full">
               <Table headers={["Category Name"]}>
                 {categories.map((cat) => (
@@ -157,14 +172,25 @@ export default function OrganizationSetup() {
             </div>
           )}
 
-          {activeTab === "Employees" && (
+          {activeTab === "Employee Directory" && (
             <div className="flex flex-col h-full">
               <Table headers={["Name", "Email", "Department", "Role"]}>
                 {employees.map((emp) => (
                   <Tr key={emp.id}>
                     <Td className="font-medium text-slate-900">{emp.name}</Td>
                     <Td>{emp.email}</Td>
-                    <Td>{emp.department || "None"}</Td>
+                    <Td>
+                      <select 
+                        className="block w-full pl-3 pr-8 py-1.5 text-sm border-slate-300 rounded-md bg-white border"
+                        value={emp.department || ""}
+                        onChange={(e) => handleDepartmentChange(emp.id, e.target.value)}
+                      >
+                        <option value="">None</option>
+                        {departments.map(dept => (
+                          <option key={dept.id} value={dept.name}>{dept.name}</option>
+                        ))}
+                      </select>
+                    </Td>
                     <Td>
                       <select 
                         className="block w-full pl-3 pr-8 py-1.5 text-sm border-slate-300 rounded-md bg-white border"
@@ -204,14 +230,28 @@ export default function OrganizationSetup() {
             />
           </div>
           {activeTab === "Departments" && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Head Name (Optional)</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                onChange={(e) => setNewEntityData({...newEntityData, headName: e.target.value})}
-              />
-            </div>
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Head Name (Optional)</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  onChange={(e) => setNewEntityData({...newEntityData, headName: e.target.value})}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Parent Department (Optional)</label>
+                <select
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                  onChange={(e) => setNewEntityData({...newEntityData, parentDepartment: e.target.value})}
+                >
+                  <option value="">None</option>
+                  {departments.map(dept => (
+                    <option key={dept.id} value={dept.name}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
           <div className="mt-6 flex justify-end gap-3">
             <Button variant="secondary" onClick={() => setIsAddModalOpen(false)}>

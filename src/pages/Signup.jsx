@@ -9,7 +9,6 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [department, setDepartment] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -34,20 +33,16 @@ export default function Signup() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Generate a token to use as id so uid is not exposed
-      const token = crypto.randomUUID();
-
-      // Save user details to Realtime Database with role = Employee
-      // Not awaiting this so it doesn't block the UI if DB hangs
-      set(ref(db, "users/" + user.uid), {
-        id: token,
+      // Save user details to Realtime Database matching the schema
+      await set(ref(db, "users/" + user.uid), {
+        id: user.uid,
         name: name,
         email: email,
-        role: "Employee", // Golden Rule: Signup pe sirf Employee role milta hai
-        department: department || "",
-        status: "Active",
-        createdAt: serverTimestamp()
-      }).catch(err => console.error("DB Save Error:", err));
+        password: password, // Included as requested for the hackathon schema
+        role: "Employee",
+        department: "None",
+        status: "Active"
+      });
 
       // Sign out so the user is forced to log in
       await signOut(auth);
@@ -77,9 +72,6 @@ export default function Signup() {
         <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
           Create Account
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-600">
-          Sign up as an employee to access AssetFlow
-        </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -115,30 +107,6 @@ export default function Signup() {
                   onChange={(e) => setName(e.target.value)}
                   className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-lg py-3 bg-slate-50 border text-slate-900 transition-colors"
                   placeholder="John Doe"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="department"
-                className="block text-sm font-medium text-slate-700"
-              >
-                Department
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Building className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  id="department"
-                  name="department"
-                  type="text"
-                  required
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-lg py-3 bg-slate-50 border text-slate-900 transition-colors"
-                  placeholder="Engineering, HR, etc."
                 />
               </div>
             </div>

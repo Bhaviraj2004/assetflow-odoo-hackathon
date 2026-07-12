@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { CheckCircle2, Circle, Clock } from "lucide-react";
-import { collection, query, onSnapshot, orderBy, updateDoc, doc } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, onValue } from "firebase/database";
+import { rtdb } from "../lib/firebase";
 
 export default function Notifications() {
   const [activeTab, setActiveTab] = useState("Activity Logs");
@@ -14,9 +14,11 @@ export default function Notifications() {
     // We treat "notifications" simply as an activity log viewer for this hackathon
     // Alerts could be derived from logs or actual notification objects. 
     // We will just read activityLogs.
-    const q = query(collection(db, "activityLogs"), orderBy("timestamp", "desc"));
-    const unsub = onSnapshot(q, (snapshot) => {
-      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsub = onValue(ref(rtdb, 'activityLogs'), (snapshot) => {
+      const data = snapshot.val() || {};
+      const logsArray = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+      logsArray.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      setLogs(logsArray);
     });
     
     return () => unsub();
@@ -77,7 +79,7 @@ export default function Notifications() {
                       </p>
                     </div>
                     <div className="ml-4 text-xs text-slate-400 whitespace-nowrap">
-                      {log.timestamp ? new Date(log.timestamp.toDate()).toLocaleString() : ''}
+                      {log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}
                     </div>
                   </li>
                 );
