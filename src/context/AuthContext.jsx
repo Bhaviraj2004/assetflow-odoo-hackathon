@@ -21,8 +21,7 @@ export function AuthProvider({ children }) {
         }
         
         // Unblock UI immediately so refresh doesn't hang
-        setLoading(false);
-        
+        setLoading(false);        
         try {
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);

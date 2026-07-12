@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus, Calendar, AlertTriangle, ArrowRight, Package, Wrench, CheckCircle, Clock } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { PageHeader } from "../components/ui/PageHeader";
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState({
@@ -89,10 +90,10 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto font-sans">
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-sm md:text-base text-slate-500">Overview of your asset lifecycle and current allocations.</p>
-      </div>
+      <PageHeader 
+        title="Dashboard" 
+        description="Overview of your asset lifecycle and current allocations." 
+      />
 
       {/* Overdue Banner - Example of static logic replaced with dynamic potential if needed */}
       <div className="mb-8 bg-rose-50/50 border border-rose-200 rounded-xl p-4 flex items-start shadow-sm transition-all hover:shadow-md">

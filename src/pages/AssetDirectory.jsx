@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { collection, query, onSnapshot, addDoc, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+
+import { PageHeader } from "../components/ui/PageHeader";
+import { Button } from "../components/ui/Button";
+import { Badge } from "../components/ui/Badge";
+import { Modal } from "../components/ui/Modal";
+import { Table, Tr, Td } from "../components/ui/Table";
 
 export default function AssetDirectory() {
   const { userData } = useAuth();
@@ -56,32 +62,28 @@ export default function AssetDirectory() {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusVariant = (status) => {
     switch(status) {
-      case "Available": return "bg-green-100 text-green-800";
-      case "Allocated": return "bg-blue-100 text-blue-800";
-      case "Under Maintenance": return "bg-orange-100 text-orange-800";
-      default: return "bg-slate-100 text-slate-800";
+      case "Available": return "success";
+      case "Allocated": return "primary";
+      case "Under Maintenance": return "warning";
+      default: return "default";
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto h-full flex flex-col">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Asset Directory</h1>
-          <p className="mt-1 text-sm md:text-base text-slate-500">View and manage all company assets.</p>
-        </div>
-        {(userData?.role === "Admin" || userData?.role === "Asset Manager") && (
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Register Asset
-          </button>
-        )}
-      </div>
+      <PageHeader 
+        title="Asset Directory" 
+        description="View and manage all company assets."
+        action={
+          (userData?.role === "Admin" || userData?.role === "Asset Manager") && (
+            <Button onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+              Register Asset
+            </Button>
+          )
+        }
+      />
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
@@ -100,82 +102,63 @@ export default function AssetDirectory() {
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-white sticky top-0 shadow-sm z-10">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tag</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Location</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
-              {assets.map((asset) => (
-                <tr key={asset.id} className="hover:bg-slate-50 transition-colors cursor-pointer">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{asset.tag}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{asset.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{asset.category}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(asset.status)}`}>
-                      {asset.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{asset.location}</td>
-                </tr>
-              ))}
-              {assets.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-slate-500 text-sm">No assets registered yet.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <Table headers={["Tag", "Name", "Category", "Status", "Location"]}>
+            {assets.map((asset) => (
+              <Tr key={asset.id} className="cursor-pointer">
+                <Td className="font-medium text-slate-900">{asset.tag}</Td>
+                <Td className="text-slate-900">{asset.name}</Td>
+                <Td>{asset.category}</Td>
+                <Td>
+                  <Badge variant={getStatusVariant(asset.status)}>
+                    {asset.status}
+                  </Badge>
+                </Td>
+                <Td>{asset.location}</Td>
+              </Tr>
+            ))}
+            {assets.length === 0 && (
+              <Tr>
+                <Td colSpan={5} className="text-center text-slate-500">
+                  No assets registered yet.
+                </Td>
+              </Tr>
+            )}
+          </Table>
         </div>
       </div>
 
       {/* Add Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-900">Register New Asset</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-500">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <form onSubmit={handleRegister} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Asset Name</label>
-                <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  value={newAsset.name} onChange={e => setNewAsset({...newAsset, name: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                <select required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
-                  value={newAsset.category} onChange={e => setNewAsset({...newAsset, category: e.target.value})}>
-                  <option value="">Select Category</option>
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
-                <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  value={newAsset.location} onChange={e => setNewAsset({...newAsset, location: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Serial Number (Optional)</label>
-                <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  value={newAsset.serialNumber} onChange={e => setNewAsset({...newAsset, serialNumber: e.target.value})} />
-              </div>
-              <div className="mt-6 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Register</button>
-              </div>
-            </form>
+      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Register New Asset">
+        <form onSubmit={handleRegister} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Asset Name</label>
+            <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              value={newAsset.name} onChange={e => setNewAsset({...newAsset, name: e.target.value})} />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+            <select required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+              value={newAsset.category} onChange={e => setNewAsset({...newAsset, category: e.target.value})}>
+              <option value="">Select Category</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+            <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              value={newAsset.location} onChange={e => setNewAsset({...newAsset, location: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Serial Number (Optional)</label>
+            <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              value={newAsset.serialNumber} onChange={e => setNewAsset({...newAsset, serialNumber: e.target.value})} />
+          </div>
+          <div className="mt-6 flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+            <Button type="submit">Register</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

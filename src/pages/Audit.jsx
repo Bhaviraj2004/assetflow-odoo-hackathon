@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
-import { Plus, X, Search, CheckCircle, AlertTriangle } from "lucide-react";
-import { collection, query, onSnapshot, addDoc, getDocs, updateDoc, doc } from "firebase/firestore";
+import { Plus, AlertTriangle } from "lucide-react";
+import { collection, onSnapshot, addDoc, getDocs, updateDoc, doc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+
+import { PageHeader } from "../components/ui/PageHeader";
+import { Button } from "../components/ui/Button";
+import { Badge } from "../components/ui/Badge";
+import { Modal } from "../components/ui/Modal";
+import { Table, Tr, Td } from "../components/ui/Table";
 
 export default function Audit() {
   const { userData } = useAuth();
@@ -36,7 +42,7 @@ export default function Audit() {
     if (!title || !scope) return;
     
     try {
-      const auditRef = await addDoc(collection(db, "audits"), {
+      await addDoc(collection(db, "audits"), {
         title,
         scope,
         status: "In Progress",
@@ -76,6 +82,11 @@ export default function Audit() {
       await updateDoc(doc(db, "audits", auditId), {
         items: newItems
       });
+      
+      // Update active audit state immediately so UI feels responsive
+      if (activeAudit && activeAudit.id === auditId) {
+        setActiveAudit({ ...activeAudit, items: newItems });
+      }
     } catch (err) {
       console.error("Error updating audit item:", err);
     }
@@ -88,7 +99,7 @@ export default function Audit() {
         completedAt: new Date()
       });
       
-      // Update missing assets
+      // Update missing assets in the main assets collection
       for (const item of audit.items) {
         if (item.status === "Missing") {
           await updateDoc(doc(db, "assets", item.assetId), {
@@ -111,27 +122,23 @@ export default function Audit() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto h-full flex flex-col">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Asset Audit</h1>
-          <p className="mt-1 text-sm md:text-base text-slate-500">Conduct physical audits and resolve discrepancies.</p>
-        </div>
-        {(userData?.role === "Admin" || userData?.role === "Asset Manager") && (
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Start New Audit
-          </button>
-        )}
-      </div>
+    <div className="max-w-6xl mx-auto h-full flex flex-col">
+      <PageHeader 
+        title="Asset Audit"
+        description="Conduct physical audits and resolve discrepancies."
+        action={
+          (userData?.role === "Admin" || userData?.role === "Asset Manager") && (
+            <Button onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+              Start New Audit
+            </Button>
+          )
+        }
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-0">
         
         {/* Active Audits Sidebar */}
-        <div className="md:col-span-1 flex flex-col gap-4 overflow-y-auto">
+        <div className="md:col-span-1 flex flex-col gap-4 overflow-y-auto pr-2">
           <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Audit Cycles</h2>
           {audits.map((audit) => {
             const isCompleted = audit.status === "Completed";
@@ -141,19 +148,19 @@ export default function Audit() {
               <div 
                 key={audit.id} 
                 onClick={() => setActiveAudit(audit)}
-                className={`p-4 bg-white border rounded-xl cursor-pointer transition-colors shadow-sm ${
+                className={`p-4 bg-white border rounded-xl cursor-pointer transition-all shadow-sm ${
                   activeAudit?.id === audit.id ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-200 hover:border-blue-300'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-semibold text-slate-900">{audit.title}</h3>
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${isCompleted ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-800'}`}>
+                  <Badge variant={isCompleted ? 'default' : 'primary'}>
                     {audit.status}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="text-xs text-slate-500 mb-2">Scope: {audit.scope}</p>
                 {discrepancies > 0 && (
-                  <div className="flex items-center mt-3 text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                  <div className="flex items-center mt-3 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-100">
                     <AlertTriangle className="w-3 h-3 mr-1" />
                     {discrepancies} Discrepancies
                   </div>
@@ -162,7 +169,9 @@ export default function Audit() {
             );
           })}
           {audits.length === 0 && (
-            <div className="text-sm text-slate-500 italic p-4 bg-white border border-slate-200 rounded-xl">No audits found.</div>
+            <div className="text-sm text-slate-500 italic p-6 bg-white border border-slate-200 rounded-xl text-center">
+              No audit cycles found.
+            </div>
           )}
         </div>
 
@@ -170,100 +179,91 @@ export default function Audit() {
         <div className="md:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
           {activeAudit ? (
             <>
-              <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/80">
+              <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                 <div>
-                  <h2 className="font-semibold text-slate-900">{activeAudit.title} Worksheet</h2>
-                  <p className="text-xs text-slate-500">Mark the physical status of each asset.</p>
+                  <h2 className="font-semibold text-slate-900 text-lg">{activeAudit.title} Worksheet</h2>
+                  <p className="text-xs text-slate-500 mt-1">Mark the physical status of each asset below.</p>
                 </div>
                 {activeAudit.status !== "Completed" && (
-                  <button 
-                    onClick={() => closeAudit(activeAudit)}
-                    className="px-3 py-1.5 bg-slate-800 text-white rounded text-sm font-medium hover:bg-slate-900"
-                  >
+                  <Button variant="secondary" onClick={() => closeAudit(activeAudit)}>
                     Close Audit
-                  </button>
+                  </Button>
                 )}
               </div>
-              <div className="flex-1 overflow-auto p-0">
-                <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-slate-50 sticky top-0">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Asset</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Expected Loc</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {activeAudit.items?.map((item, index) => (
-                      <tr key={item.assetId} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                          {item.assetTag}
-                          <div className="text-xs text-slate-500 font-normal">{item.assetName}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-500">{item.expectedLocation}</td>
-                        <td className="px-4 py-3">
-                          {activeAudit.status === "Completed" ? (
-                            <span className="text-sm font-medium text-slate-700">{item.status}</span>
-                          ) : (
-                            <select 
-                              value={item.status}
-                              onChange={(e) => updateItemStatus(activeAudit.id, index, e.target.value)}
-                              className={`text-sm rounded border-slate-300 py-1 pl-2 pr-6 focus:ring-blue-500 focus:border-blue-500 ${
-                                item.status === 'Verified' ? 'bg-green-50 text-green-700 border-green-200' :
-                                item.status === 'Missing' ? 'bg-red-50 text-red-700 border-red-200' :
-                                item.status === 'Damaged' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                'bg-white text-slate-600'
-                              }`}
-                            >
-                              <option value="Pending">Pending</option>
-                              <option value="Verified">Verified</option>
-                              <option value="Damaged">Damaged</option>
-                              <option value="Missing">Missing</option>
-                            </select>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="flex-1 overflow-auto">
+                <Table headers={["Asset", "Expected Location", "Status"]}>
+                  {activeAudit.items?.map((item, index) => (
+                    <Tr key={item.assetId}>
+                      <Td>
+                        <div className="font-medium text-slate-900">{item.assetTag}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">{item.assetName}</div>
+                      </Td>
+                      <Td>{item.expectedLocation}</Td>
+                      <Td>
+                        {activeAudit.status === "Completed" ? (
+                          <Badge variant={item.status === 'Verified' ? 'success' : item.status === 'Missing' ? 'danger' : item.status === 'Damaged' ? 'warning' : 'default'}>
+                            {item.status}
+                          </Badge>
+                        ) : (
+                          <select 
+                            value={item.status}
+                            onChange={(e) => updateItemStatus(activeAudit.id, index, e.target.value)}
+                            className={`text-sm rounded-lg border-slate-300 py-1.5 pl-3 pr-8 focus:ring-blue-500 focus:border-blue-500 border outline-none ${
+                              item.status === 'Verified' ? 'bg-green-50 text-green-700 border-green-200' :
+                              item.status === 'Missing' ? 'bg-red-50 text-red-700 border-red-200' :
+                              item.status === 'Damaged' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              'bg-white text-slate-600'
+                            }`}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Verified">Verified</option>
+                            <option value="Damaged">Damaged</option>
+                            <option value="Missing">Missing</option>
+                          </select>
+                        )}
+                      </Td>
+                    </Tr>
+                  ))}
+                  {(!activeAudit.items || activeAudit.items.length === 0) && (
+                    <Tr>
+                      <Td colSpan={3} className="text-center text-slate-500">
+                        No assets found in this audit scope.
+                      </Td>
+                    </Tr>
+                  )}
+                </Table>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
-              Select an audit cycle from the left to view the worksheet.
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8 text-center">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100">
+                <AlertTriangle className="w-8 h-8 text-slate-300" />
+              </div>
+              <p className="font-medium text-slate-900">No Worksheet Selected</p>
+              <p className="text-sm mt-1">Select an audit cycle from the left panel to begin verification.</p>
             </div>
           )}
         </div>
       </div>
 
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-900">Start Audit Cycle</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-500">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateAudit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Audit Title</label>
-                <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Q3 HQ Inventory Audit" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Scope / Department</label>
-                <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  value={scope} onChange={e => setScope(e.target.value)} placeholder="e.g. Engineering" />
-              </div>
-              <div className="mt-6 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Start Audit</button>
-              </div>
-            </form>
+      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Start Audit Cycle">
+        <form onSubmit={handleCreateAudit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Audit Title</label>
+            <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Q3 HQ Inventory Audit" />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Scope / Department</label>
+            <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              value={scope} onChange={e => setScope(e.target.value)} placeholder="e.g. Engineering" />
+          </div>
+          <div className="mt-6 flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+            <Button type="submit">Start Audit</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
