@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CheckCircle2, Circle, Clock } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Laptop, Wrench, Calendar, FileText, AlertTriangle, ArrowRightLeft } from "lucide-react";
 import { ref, onValue } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 
@@ -64,21 +64,62 @@ export default function Notifications() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {logs.map((log) => {
-                const isAlert = log.action.toLowerCase().includes("overdue") || log.action.toLowerCase().includes("discrepancy");
+                const action = log.action.toLowerCase();
+                const isAlert = action.includes("overdue") || action.includes("discrepancy") || action.includes("missing") || action.includes("damaged");
                 
                 if (activeTab === "Alerts" && !isAlert) return null;
                 
+                // Determine icon and color based on keywords
+                let Icon = Clock;
+                let colorClass = "text-slate-400";
+                let bgClass = "bg-slate-100";
+                
+                if (action.includes("allocated") || action.includes("assigned")) {
+                  Icon = Laptop;
+                  colorClass = "text-blue-600";
+                  bgClass = "bg-blue-100";
+                } else if (action.includes("maintenance")) {
+                  Icon = Wrench;
+                  colorClass = "text-amber-600";
+                  bgClass = "bg-amber-100";
+                } else if (action.includes("book")) {
+                  Icon = Calendar;
+                  colorClass = "text-indigo-600";
+                  bgClass = "bg-indigo-100";
+                } else if (action.includes("audit") || action.includes("report")) {
+                  Icon = FileText;
+                  colorClass = "text-purple-600";
+                  bgClass = "bg-purple-100";
+                } else if (action.includes("transfer") || action.includes("return")) {
+                  Icon = ArrowRightLeft;
+                  colorClass = "text-teal-600";
+                  bgClass = "bg-teal-100";
+                } else if (action.includes("approved") || action.includes("completed") || action.includes("verified")) {
+                  Icon = CheckCircle2;
+                  colorClass = "text-green-600";
+                  bgClass = "bg-green-100";
+                }
+                
+                if (isAlert) {
+                  Icon = AlertTriangle;
+                  colorClass = "text-red-600";
+                  bgClass = "bg-red-100";
+                }
+                
                 return (
                   <li key={log.id} className="p-4 flex items-start hover:bg-slate-50 transition-colors">
-                    <div className="mr-4 mt-0.5 text-slate-400">
-                      {isAlert ? <Circle className="h-5 w-5 text-red-500" /> : <Clock className="h-5 w-5" />}
+                    <div className={`mr-4 mt-1 w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${bgClass}`}>
+                      <Icon className={`h-5 w-5 ${colorClass}`} />
                     </div>
                     <div className="flex-1">
                       <p className={`text-sm text-slate-700 ${isAlert ? 'text-red-700 font-medium' : ''}`}>
                         <span className="font-semibold text-slate-900">{log.action}:</span> {log.entity}
                       </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        System generated notification
+                      </p>
                     </div>
-                    <div className="ml-4 text-xs text-slate-400 whitespace-nowrap">
+                    <div className="ml-4 text-xs text-slate-400 whitespace-nowrap bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                       {log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}
                     </div>
                   </li>

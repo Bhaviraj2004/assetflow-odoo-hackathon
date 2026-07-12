@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, AlertTriangle } from "lucide-react";
+import { Plus, AlertTriangle, CheckCircle, XCircle, FileText } from "lucide-react";
 import { ref, onValue, get, push, set, update } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,7 @@ export default function Audit() {
   const { userData } = useAuth();
   const [audits, setAudits] = useState([]);
   const [assets, setAssets] = useState([]);
+  const [categories, setCategories] = useState([]);
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -36,6 +37,14 @@ export default function Audit() {
     };
     fetchAssets();
     
+    // Fetch categories for scope selection
+    const fetchCategories = async () => {
+      const snap = await get(ref(rtdb, 'categories'));
+      const data = snap.val() || {};
+      setCategories(Object.values(data).map(cat => cat.name));
+    };
+    fetchCategories();
+    
     return () => unsubAudits();
   }, []);
 
@@ -44,6 +53,12 @@ export default function Audit() {
     if (!title || !scope) return;
     
     try {
+      const targetAssets = scope === "All" ? assets : assets.filter(a => a.category === scope);
+      if (targetAssets.length === 0) {
+        alert("No assets found for this category.");
+        return;
+      }
+      
       const newAuditRef = push(ref(rtdb, "audits"));
       await set(newAuditRef, {
         title,
@@ -51,7 +66,7 @@ export default function Audit() {
         status: "In Progress",
         createdBy: userData?.name || "Unknown",
         createdAt: new Date().toISOString(),
-        items: assets.map(a => ({
+        items: targetAssets.map(a => ({
           assetId: a.id,
           assetTag: a.tag,
           assetName: a.name,
@@ -108,6 +123,10 @@ export default function Audit() {
         if (item.status === "Missing") {
           await update(ref(rtdb, `assets/${item.assetId}`), {
             status: "Lost"
+          });
+        } else if (item.status === "Damaged") {
+          await update(ref(rtdb, `assets/${item.assetId}`), {
+            status: "Maintenance"
           });
         }
       }
@@ -196,6 +215,74 @@ export default function Audit() {
                 )}
               </div>
               <div className="flex-1 overflow-auto">
+                {activeAudit.status === "Completed" && (
+                  <div className="m-6 p-6 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-lg">Official Audit Report</h3>
+                        <p className="text-sm text-slate-500">Generated on {new Date(activeAudit.completedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                      <div className="bg-white p-4 rounded-lg border border-slate-200 text-center shadow-sm">
+                        <div className="text-2xl font-bold text-slate-700">{activeAudit.items?.length || 0}</div>
+                        <div className="text-xs text-slate-500 font-medium uppercase mt-1">Total Scanned</div>
+                      </div>
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200 text-center shadow-sm">
+                        <div className="text-2xl font-bold text-green-700">
+                          {activeAudit.items?.filter(i => i.status === 'Verified').length || 0}
+                        </div>
+                        <div className="text-xs text-green-600 font-medium uppercase mt-1">Verified</div>
+                      </div>
+                      <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-center shadow-sm">
+                        <div className="text-2xl font-bold text-red-700">
+                          {activeAudit.items?.filter(i => i.status === 'Missing').length || 0}
+                        </div>
+                        <div className="text-xs text-red-600 font-medium uppercase mt-1">Missing</div>
+                      </div>
+                      <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 text-center shadow-sm">
+                        <div className="text-2xl font-bold text-amber-700">
+                          {activeAudit.items?.filter(i => i.status === 'Damaged').length || 0}
+                        </div>
+                        <div className="text-xs text-amber-600 font-medium uppercase mt-1">Damaged</div>
+                      </div>
+                    </div>
+                    
+                    {activeAudit.items?.some(i => i.status === 'Missing' || i.status === 'Damaged') && (
+                      <div className="bg-white border border-red-200 rounded-lg overflow-hidden">
+                        <div className="bg-red-50 p-3 border-b border-red-200 font-semibold text-red-800 text-sm flex items-center">
+                          <AlertTriangle className="w-4 h-4 mr-2" /> Discrepancies Found
+                        </div>
+                        <div className="p-0">
+                          <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                              <tr><th className="px-4 py-2">Asset</th><th className="px-4 py-2">Status Action Taken</th></tr>
+                            </thead>
+                            <tbody>
+                              {activeAudit.items.filter(i => i.status === 'Missing' || i.status === 'Damaged').map(item => (
+                                <tr key={item.assetId} className="border-t border-slate-100">
+                                  <td className="px-4 py-3 font-medium text-slate-700">{item.assetTag} - {item.assetName}</td>
+                                  <td className="px-4 py-3">
+                                    {item.status === 'Missing' ? (
+                                      <span className="text-red-600 font-medium text-xs">Marked as LOST in DB</span>
+                                    ) : (
+                                      <span className="text-amber-600 font-medium text-xs">Moved to MAINTENANCE in DB</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Table headers={["Asset", "Expected Location", "Status"]}>
                   {activeAudit.items?.map((item, index) => (
                     <Tr key={item.assetId}>
@@ -259,9 +346,13 @@ export default function Audit() {
               value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Q3 HQ Inventory Audit" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Scope / Department</label>
-            <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-              value={scope} onChange={e => setScope(e.target.value)} placeholder="e.g. Engineering" />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Scope / Category</label>
+            <select required className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+              value={scope} onChange={e => setScope(e.target.value)}>
+              <option value="">Select Category</option>
+              <option value="All">All Assets</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
           <div className="mt-6 flex justify-end gap-3 pt-2">
             <Button variant="secondary" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
