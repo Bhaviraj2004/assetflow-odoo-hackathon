@@ -9,6 +9,8 @@ import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { Modal } from "../components/ui/Modal";
 import { Table, Tr, Td } from "../components/ui/Table";
+import { ImageUpload } from "../components/ui/ImageUpload";
+import { Image as ImageIcon } from "lucide-react";
 
 export default function AssetDirectory() {
   const { userData } = useAuth();
@@ -24,7 +26,8 @@ export default function AssetDirectory() {
     cost: "",
     purchaseDate: "",
     condition: "Good",
-    status: "Available"
+    status: "Available",
+    imageUrl: ""
   });
 
   useEffect(() => {
@@ -72,7 +75,7 @@ export default function AssetDirectory() {
       const newRef = push(ref(rtdb, 'assets'));
       await set(newRef, assetData);
       setIsAddModalOpen(false);
-      setNewAsset({ name: "", category: "", location: "", serialNumber: "", cost: "", purchaseDate: "", condition: "Good", status: "Available" });
+      setNewAsset({ name: "", category: "", location: "", serialNumber: "", cost: "", purchaseDate: "", condition: "Good", status: "Available", imageUrl: "" });
     } catch (err) {
       console.error("Failed to register asset", err);
     }
@@ -122,11 +125,24 @@ export default function AssetDirectory() {
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
-          <Table headers={["Tag", "Name", "Category", "Status", "Location"]}>
+          <Table headers={["Asset", "Category", "Status", "Location"]}>
             {assets.map((asset) => (
-              <Tr key={asset.id} className="cursor-pointer">
-                <Td className="font-medium text-slate-900">{asset.tag}</Td>
-                <Td className="text-slate-900">{asset.name}</Td>
+              <Tr key={asset.id} className="cursor-pointer hover:bg-slate-50 transition-colors">
+                <Td>
+                  <div className="flex items-center gap-3">
+                    {asset.imageUrl ? (
+                      <img src={asset.imageUrl} alt={asset.name} className="w-10 h-10 rounded-md object-cover border border-slate-200" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="font-semibold text-slate-900">{asset.name}</div>
+                      <div className="text-xs text-slate-500 font-medium">{asset.tag}</div>
+                    </div>
+                  </div>
+                </Td>
                 <Td>{asset.category}</Td>
                 <Td>
                   <Badge variant={getStatusVariant(asset.status)}>
@@ -150,6 +166,16 @@ export default function AssetDirectory() {
       {/* Add Modal */}
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Register New Asset">
         <form onSubmit={handleRegister} className="space-y-4">
+          
+          <div className="flex justify-center mb-6">
+            <div className="w-48">
+              <ImageUpload 
+                label="Asset Photo" 
+                onUpload={(url) => setNewAsset({...newAsset, imageUrl: url})} 
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1">Asset Name</label>

@@ -8,6 +8,8 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { Badge } from "../components/ui/Badge";
+import { ImageUpload } from "../components/ui/ImageUpload";
+import { Image as ImageIcon } from "lucide-react";
 
 export default function Maintenance() {
   const { userData } = useAuth();
@@ -28,6 +30,7 @@ export default function Maintenance() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState("");
   const [issue, setIssue] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
 
   useEffect(() => {
     // Fetch maintenance requests
@@ -60,6 +63,7 @@ export default function Maintenance() {
         assetTag: asset.tag,
         assetName: asset.name,
         issue,
+        imageUrl,
         status: "Pending",
         raisedBy: userData?.name || "Unknown",
         createdAt: new Date().toISOString()
@@ -75,6 +79,7 @@ export default function Maintenance() {
       setIsAddModalOpen(false);
       setSelectedAssetId("");
       setIssue("");
+      setImageUrl("");
     } catch (err) {
       console.error(err);
       alert("Error raising request");
@@ -158,6 +163,13 @@ export default function Maintenance() {
                       </button>
                     )}
                   </div>
+                  
+                  {card.imageUrl && (
+                    <div className="mt-3 mb-2 rounded-lg overflow-hidden border border-slate-200">
+                      <img src={card.imageUrl} alt="Damage report" className="w-full h-32 object-cover" />
+                    </div>
+                  )}
+
                   <p className="text-sm text-slate-800 font-medium leading-relaxed">{card.issue}</p>
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -190,6 +202,16 @@ export default function Maintenance() {
               {assets.map(a => <option key={a.id} value={a.id}>{a.tag} - {a.name}</option>)}
             </select>
           </div>
+          
+          <div className="flex justify-center mb-4">
+            <div className="w-full">
+              <ImageUpload 
+                label="Attach Photo (Optional)" 
+                onUpload={(url) => setImageUrl(url)} 
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Issue Description</label>
             <textarea required rows={4} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
