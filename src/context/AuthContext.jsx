@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { ref, get } from "firebase/database";
+import { auth, rtdb as db } from "../lib/firebase";
 
 const AuthContext = createContext();
 
@@ -23,11 +23,11 @@ export function AuthProvider({ children }) {
         // Unblock UI immediately so refresh doesn't hang
         setLoading(false);        
         try {
-          const userDocRef = doc(db, "users", firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
+          const userDocRef = ref(db, "users/" + firebaseUser.uid);
+          const snapshot = await get(userDocRef);
           
-          if (userDoc.exists()) {
-            const data = userDoc.data();
+          if (snapshot.exists()) {
+            const data = snapshot.val();
             if (firebaseUser.uid === 'r8XlrUMyZiSpojvMIz9TB1BiiCZ2') data.role = 'Admin';
             setUserData(data);
           } else {

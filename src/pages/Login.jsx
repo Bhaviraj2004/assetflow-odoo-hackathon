@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Package, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const location = useLocation();
+  const [email, setEmail] = useState(location.state?.email || "");
+  const [password, setPassword] = useState(location.state?.password || "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -129,12 +130,12 @@ export default function Login() {
               </div>
 
               <div className="text-sm">
-                <a
-                  href="#"
+                <Link
+                  to="/forgot-password"
                   className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
                 >
                   Forgot password?
-                </a>
+                </Link>
               </div>
             </div>
 

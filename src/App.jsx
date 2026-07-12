@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import ForgotPassword from './pages/ForgotPassword'
 import Landing from './pages/Landing'
 import Layout from './components/Layout'
 import { useAuth } from './context/AuthContext'
@@ -36,6 +37,7 @@ function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       
       {/* Protected Routes Wrapper */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

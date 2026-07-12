@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Package, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { Package, Mail, Lock, User, ArrowRight, Loader2, Building } from "lucide-react";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { ref, set, serverTimestamp } from "firebase/database";
+import { auth, rtdb as db } from "../lib/firebase";
 
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [department, setDepartment] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -33,18 +34,26 @@ export default function Signup() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Save user details to Firestore with role = Employee
-      await setDoc(doc(db, "users", user.uid), {
-        id: user.uid,
+      // Generate a token to use as id so uid is not exposed
+      const token = crypto.randomUUID();
+
+      // Save user details to Realtime Database with role = Employee
+      // Not awaiting this so it doesn't block the UI if DB hangs
+      set(ref(db, "users/" + user.uid), {
+        id: token,
         name: name,
         email: email,
         role: "Employee", // Golden Rule: Signup pe sirf Employee role milta hai
+        department: department || "",
         status: "Active",
         createdAt: serverTimestamp()
-      });
+      }).catch(err => console.error("DB Save Error:", err));
 
-      // Redirect to dashboard (or login)
-      navigate("/dashboard");
+      // Sign out so the user is forced to log in
+      await signOut(auth);
+
+      // Redirect to login and pass the email/password
+      navigate("/login", { state: { email, password } });
     } catch (err) {
       console.error(err);
       if (err.code === "auth/email-already-in-use") {
@@ -106,6 +115,30 @@ export default function Signup() {
                   onChange={(e) => setName(e.target.value)}
                   className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-lg py-3 bg-slate-50 border text-slate-900 transition-colors"
                   placeholder="John Doe"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="department"
+                className="block text-sm font-medium text-slate-700"
+              >
+                Department
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Building className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  id="department"
+                  name="department"
+                  type="text"
+                  required
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-slate-300 rounded-lg py-3 bg-slate-50 border text-slate-900 transition-colors"
+                  placeholder="Engineering, HR, etc."
                 />
               </div>
             </div>

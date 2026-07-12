@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
-import { collection, query, onSnapshot, addDoc, updateDoc, doc } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { collection, query, onSnapshot, addDoc } from "firebase/firestore";
+import { ref, onValue, update } from "firebase/database";
+import { db, rtdb } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
 import { PageHeader } from "../components/ui/PageHeader";
@@ -32,8 +33,16 @@ export default function OrganizationSetup() {
     const unsubCats = onSnapshot(query(collection(db, "categories")), (snapshot) => {
       setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => console.error("Error fetching categories:", error));
-    const unsubEmps = onSnapshot(query(collection(db, "users")), (snapshot) => {
-      setEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+    const usersRef = ref(rtdb, 'users');
+    const unsubEmps = onValue(usersRef, (snapshot) => {
+      const usersData = snapshot.val();
+      if (usersData) {
+        const usersList = Object.entries(usersData).map(([id, data]) => ({ id, ...data }));
+        setEmployees(usersList);
+      } else {
+        setEmployees([]);
+      }
     }, (error) => console.error("Error fetching employees:", error));
 
     return () => {
@@ -61,17 +70,22 @@ export default function OrganizationSetup() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await updateDoc(doc(db, "users", userId), { role: newRole });
+      await update(ref(rtdb, `users/${userId}`), { role: newRole });
     } catch (err) {
       console.error("Error updating role:", err);
     }
   };
 
-  // Loader removed per user request
-
-  // For the hackathon demo, we are temporarily removing the strict Admin check 
-  // so you can access the page even if your Firebase role isn't properly set.
-  // if (userData?.role !== "Admin") { ... }
+  if (!loading && userData?.role !== "Admin") {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-slate-900">Access Denied</h2>
+          <p className="mt-2 text-slate-600">You must be an Admin to view Organization Setup.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto h-full flex flex-col">
